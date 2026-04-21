@@ -27,7 +27,15 @@ class MNISTClassifier(abc.ABC):
         - Use the model's fit() method with the provided parameters.
         - Return the History object from fit().
         """
-        raise NotImplementedError
+        if self.model is None:
+            self.model = self.build_model()
+        history = self.model.fit(
+            x_train, y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_split=validation_split
+        )
+        return history
 
     def evaluate(self, x_test: np.ndarray, y_test: np.ndarray) -> dict:
         """Evaluate the model on the test data.
@@ -38,7 +46,11 @@ class MNISTClassifier(abc.ABC):
         - Use the model's predict() method and np.argmax to get predicted labels.
         - Return a dict with keys: "loss", "accuracy", "y_pred".
         """
-        raise NotImplementedError
+        if self.model is None:
+            raise RuntimeError("Model is not built. Call build_model() first.")
+        loss, accuracy = self.model.evaluate(x_test, y_test)
+        y_pred = np.argmax(self.model.predict(x_test), axis=1)
+        return {"loss": loss, "accuracy": accuracy, "y_pred": y_pred}
 
     def save(self, path: str) -> None:
         """Save the model to the given file path.
@@ -47,7 +59,9 @@ class MNISTClassifier(abc.ABC):
         - Raise RuntimeError if self.model is None.
         - Use the model's save() method.
         """
-        raise NotImplementedError
+        if self.model is None:
+            raise RuntimeError("Model is not built. Call build_model() first.")
+        self.model.save(path)
 
     def load(self, path: str) -> None:
         """Load a model from the given file path.
@@ -55,7 +69,7 @@ class MNISTClassifier(abc.ABC):
         TODO: Implement this method.
         - Use tf.keras.models.load_model() and assign to self.model.
         """
-        raise NotImplementedError
+        self.model = tf.keras.models.load_model(path)
 
 
 class LogisticRegressionClassifier(MNISTClassifier):
@@ -72,7 +86,16 @@ class LogisticRegressionClassifier(MNISTClassifier):
           and metrics=["accuracy"].
         - Return the compiled model.
         """
-        raise NotImplementedError
+        model = tf.keras.Sequential([
+            tf.keras.layers.InputLayer(input_shape=(784,)),
+            tf.keras.layers.Dense(10, activation="softmax")
+        ])
+        model.compile(
+            optimizer="sgd",
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"]
+        )
+        return model
 
 
 class NeuralNetworkClassifier(MNISTClassifier):
@@ -91,4 +114,15 @@ class NeuralNetworkClassifier(MNISTClassifier):
           and metrics=["accuracy"].
         - Return the compiled model.
         """
-        raise NotImplementedError
+        model = tf.keras.Sequential([
+            tf.keras.layers.InputLayer(input_shape=(784,)),
+            tf.keras.layers.Dense(128, activation="relu"),
+            tf.keras.layers.Dense(64, activation="relu"),
+            tf.keras.layers.Dense(10, activation="softmax")
+        ])
+        model.compile(
+            optimizer="adam",
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"]
+        )
+        return model
